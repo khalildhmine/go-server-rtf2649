@@ -1,0 +1,25 @@
+# Server Configuration
+PORT=8080
+GIN_MODE=debug
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=44441318@
+DB_NAME=repair_service_db
+DB_SSL_MODE=disable
+
+
+# JWT Configuration - ENTERPRISE GRADE
+# Generate a new secure secret: openssl rand -hex 64
+JWT_SECRET=3QAqEboPA3agG2oGIybEyWCr0P/apXJNQTAUM3QN5Bw=
+JWT_EXPIRY_HOURS=72
+
+# Phone Number Configuration
+DEFAULT_COUNTRY_CODE=+222
+
+
+CLOUDINARY_CLOUD_NAME=djvw1mcxe
+CLOUDINARY_API_KEY=374777244146465
+CLOUDINARY_API_SECRET=KQhaey6lBfdc2PeHlY9-U5axhw8
