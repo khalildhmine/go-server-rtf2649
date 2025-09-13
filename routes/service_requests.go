@@ -377,14 +377,46 @@ func getAvailableServiceRequests(c *gin.Context) {
 					30.0, // Assume average speed of 30 km/h
 				)
 				
-				// Get customer name separately to avoid preload issues
+				// Get customer details separately to avoid preload issues
 				var customer models.User
-				var customerName string
+				var customerName, customerPhone string
 				if err := database.DB.First(&customer, request.CustomerID).Error; err == nil {
 					customerName = customer.FullName
+					customerPhone = customer.PhoneNumber
 				} else {
 					customerName = "Unknown Customer"
+					customerPhone = ""
 				}
+				
+				// Get customer's default address for more detailed location info
+				var customerAddress models.Address
+				var addressDetails string
+				var customerLat, customerLng float64
+				if err := database.DB.Where("user_id = ? AND is_default = ?", request.CustomerID, true).First(&customerAddress).Error; err == nil {
+					addressDetails = customerAddress.AddressDetails
+					customerLat = customerAddress.Latitude
+					customerLng = customerAddress.Longitude
+				} else {
+					// Fallback to service request location if no default address
+					addressDetails = request.LocationAddress
+					if request.LocationLat != nil {
+						customerLat = *request.LocationLat
+					}
+					if request.LocationLng != nil {
+						customerLng = *request.LocationLng
+					}
+				}
+				
+				// Debug logging for coordinates
+				var requestLat, requestLng float64
+				if request.LocationLat != nil {
+					requestLat = *request.LocationLat
+				}
+				if request.LocationLng != nil {
+					requestLng = *request.LocationLng
+				}
+				log.Printf("🗺️ Request %d coordinates: customerLat=%.6f, customerLng=%.6f, requestLat=%.6f, requestLng=%.6f", 
+					request.ID, customerLat, customerLng, requestLat, requestLng)
 				
 				availableRequests = append(availableRequests, gin.H{
 					"id": request.ID,
@@ -402,20 +434,58 @@ func getAvailableServiceRequests(c *gin.Context) {
 					"distance": distance,
 					"eta_minutes": int(eta.Minutes()),
 					"customer_name": customerName,
+					"customer_phone": customerPhone,
+					"customer_address_details": addressDetails,
+					"coordinates": gin.H{
+						"latitude": customerLat,
+						"longitude": customerLng,
+					},
 					"created_at": request.CreatedAt,
 					"status": request.Status,
 				})
 			}
 		} else {
 			// For workers without location data, show all requests in their category
-			// Get customer name separately to avoid preload issues
+			// Get customer details separately to avoid preload issues
 			var customer models.User
-			var customerName string
+			var customerName, customerPhone string
 			if err := database.DB.First(&customer, request.CustomerID).Error; err == nil {
 				customerName = customer.FullName
+				customerPhone = customer.PhoneNumber
 			} else {
 				customerName = "Unknown Customer"
+				customerPhone = ""
 			}
+			
+			// Get customer's default address for more detailed location info
+			var customerAddress models.Address
+			var addressDetails string
+			var customerLat, customerLng float64
+			if err := database.DB.Where("user_id = ? AND is_default = ?", request.CustomerID, true).First(&customerAddress).Error; err == nil {
+				addressDetails = customerAddress.AddressDetails
+				customerLat = customerAddress.Latitude
+				customerLng = customerAddress.Longitude
+			} else {
+				// Fallback to service request location if no default address
+				addressDetails = request.LocationAddress
+				if request.LocationLat != nil {
+					customerLat = *request.LocationLat
+				}
+				if request.LocationLng != nil {
+					customerLng = *request.LocationLng
+				}
+			}
+			
+			// Debug logging for coordinates
+			var requestLat, requestLng float64
+			if request.LocationLat != nil {
+				requestLat = *request.LocationLat
+			}
+			if request.LocationLng != nil {
+				requestLng = *request.LocationLng
+			}
+			log.Printf("🗺️ Request %d coordinates (no location): customerLat=%.6f, customerLng=%.6f, requestLat=%.6f, requestLng=%.6f", 
+				request.ID, customerLat, customerLng, requestLat, requestLng)
 			
 			availableRequests = append(availableRequests, gin.H{
 				"id": request.ID,
@@ -433,6 +503,12 @@ func getAvailableServiceRequests(c *gin.Context) {
 				"distance": nil,
 				"eta_minutes": nil,
 				"customer_name": customerName,
+				"customer_phone": customerPhone,
+				"customer_address_details": addressDetails,
+				"coordinates": gin.H{
+					"latitude": customerLat,
+					"longitude": customerLng,
+				},
 				"created_at": request.CreatedAt,
 				"status": request.Status,
 			})
