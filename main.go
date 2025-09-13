@@ -85,6 +85,8 @@ func main() {
 		// Notification models
 		&models.Notification{},
 		&models.PushToken{},
+		// Feedback models
+		&models.Feedback{},
 	)
 
 	// Set Gin mode
@@ -426,6 +428,12 @@ func main() {
 			adminRoutes.POST("/categories", routes.CreateCategory)
 			adminRoutes.PUT("/categories/:id", routes.UpdateCategory)
 			adminRoutes.DELETE("/categories/:id", routes.DeleteCategory)
+
+			// Admin feedback management
+			adminRoutes.GET("/feedback", routes.GetAllFeedback)
+			adminRoutes.GET("/feedback/stats", routes.GetFeedbackStats)
+			adminRoutes.GET("/feedback/:id", routes.GetFeedbackById)
+			adminRoutes.DELETE("/feedback/:id", routes.DeleteFeedback)
 		}
 	}
 

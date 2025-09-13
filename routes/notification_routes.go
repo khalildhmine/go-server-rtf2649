@@ -437,9 +437,11 @@ type UserActivity struct {
 
 type FeedbackSubmission struct {
 	ServiceRequestID *uint   `json:"service_request_id,omitempty"`
-	Feedback         string  `json:"feedback"`
-	WorkerName       *string `json:"worker_name,omitempty"`
-	ServiceTitle     *string `json:"service_title,omitempty"`
+	Rating           int     `json:"rating" binding:"required,min=1,max=5"`
+	Comment          string  `json:"comment" binding:"required"`
+	AppVersion       string  `json:"app_version"`
+	DeviceModel      string  `json:"device_model"`
+	OS               string  `json:"os"`
 }
 
 // SendCampaignNotification sends a campaign notification immediately
@@ -548,11 +550,25 @@ func SubmitFeedback(c *gin.Context) {
 		return
 	}
 
-	// Store feedback in database
-	// You might want to create a separate Feedback model/table
-	// For now, we'll just log it
-	log.Printf("💬 Feedback submitted: User %d, Service Request: %v, Feedback: %s, Worker: %v, Service: %v", 
-		userID, feedback.ServiceRequestID, feedback.Feedback, feedback.WorkerName, feedback.ServiceTitle)
+	// Persist feedback in database
+	fb := models.Feedback{
+		UserID:           userID,
+		ServiceRequestID: feedback.ServiceRequestID,
+		Rating:           feedback.Rating,
+		Comment:          feedback.Comment,
+		AppVersion:       feedback.AppVersion,
+		DeviceModel:      feedback.DeviceModel,
+		OS:               feedback.OS,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}
+	if err := database.DB.Create(&fb).Error; err != nil {
+		log.Printf("❌ Failed to save feedback: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save feedback"})
+		return
+	}
+
+	log.Printf("✅ Feedback saved: id=%d user=%d rating=%d", fb.ID, userID, fb.Rating)
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Feedback submitted successfully"})
 }

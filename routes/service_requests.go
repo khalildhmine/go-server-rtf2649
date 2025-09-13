@@ -1041,6 +1041,48 @@ func completeServiceRequest(c *gin.Context) {
 	if err := SendServiceStatusNotification(serviceRequest.CustomerID, serviceRequest.ID, "completed"); err != nil {
 		log.Printf("⚠️ Failed to send completion notification: %v", err)
 	}
+
+	// Send feedback request notification to customer after first completion
+	var customerCompleted int64
+	database.DB.Model(&models.ServiceHistory{}).Where("customer_id = ?", serviceRequest.CustomerID).Count(&customerCompleted)
+	if customerCompleted == 1 {
+		customerFeedbackData := map[string]interface{}{
+			"action": "feedback_request",
+			"role": "customer",
+			"service_request_id": serviceRequest.ID,
+		}
+		if err := SendPushNotification(serviceRequest.CustomerID,
+			"We value your feedback",
+			"Your first service is complete! Please share your feedback to help us improve.",
+			"feedback_request",
+			customerFeedbackData); err != nil {
+			log.Printf("⚠️ Failed to send customer feedback request notification: %v", err)
+		} else {
+			log.Printf("✅ Feedback request notification sent to customer %d", serviceRequest.CustomerID)
+		}
+	}
+
+	// Send feedback request notification to worker after first completion
+	var completedJobs int64
+	database.DB.Model(&models.ServiceHistory{}).Where("worker_id = ?", workerProfile.ID).Count(&completedJobs)
+	
+	if completedJobs == 1 { // First job completion
+		feedbackData := map[string]interface{}{
+			"action": "feedback_request",
+			"worker_id": workerProfile.ID,
+			"service_request_id": serviceRequest.ID,
+		}
+		
+		if err := SendPushNotification(userID, 
+			"Help Us Improve Your Experience", 
+			"Your first job is complete! Please share your feedback to help us enhance your experience.", 
+			"feedback_request", 
+			feedbackData); err != nil {
+			log.Printf("⚠️ Failed to send feedback request notification: %v", err)
+		} else {
+			log.Printf("✅ Feedback request notification sent to worker %d", userID)
+		}
+	}
 	
 	log.Printf("✅ Worker %d (profile %d) completed service request %d", userID, workerProfile.ID, serviceRequest.ID)
 	
